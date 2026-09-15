@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WorthIt · 消费投资看板</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232F6B4F'/%3E%3Cpath d='M8 21 L14 13 L19 17 L25 8' stroke='%23E5B95C' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='25' cy='8' r='2.6' fill='%23E5B95C'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#F5F6F2; --card:#FFFFFF; --ink:#1E2A23; --sub:#6B7A70; --line:#E3E7E0;
+  --brand:#2F6B4F; --brand-soft:#E5EFE8; --gold:#B98A2F; --gold-soft:#F7EFDC;
+  --warn:#C0552E; --warn-soft:#F9E9E1; --info:#3E6B8E; --info-soft:#E7EFF4;
+  --radius:12px; --shadow:0 1px 2px rgba(30,42,35,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",-apple-system,sans-serif;font-size:14px;line-height:1.55}
+.num{font-variant-numeric:tabular-nums}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#D5DBD2;border-radius:4px}
+
+/* ===== 顶栏 ===== */
+header{position:sticky;top:0;z-index:50;background:rgba(245,246,242,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav{max-width:1120px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px;letter-spacing:.02em}
+.brand .logo{width:30px;height:30px;border-radius:8px;background:var(--brand);display:flex;align-items:center;justify-content:center}
+.brand .logo svg{width:18px;height:18px}
+.brand small{font-weight:400;color:var(--sub);font-size:11px;letter-spacing:.08em}
+.tabs{margin-left:auto;display:flex;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;overflow-x:auto}
+.tabs button{padding:6px 14px;border-radius:8px;color:var(--sub);white-space:nowrap}
+.tabs button.on{background:var(--brand);color:#fff;font-weight:600}
+
+main{max-width:1120px;margin:0 auto;padding:18px 16px 80px}
+.section-title{display:flex;align-items:baseline;gap:10px;margin:22px 0 12px}
+.section-title h2{font-size:17px;font-weight:700}
+.section-title .note{color:var(--sub);font-size:12px}
+.hidden{display:none!important}
+
+/* ===== 汇总卡 ===== */
+.summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.sum-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.sum-card .label{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px}
+.sum-card .value{font-size:24px;font-weight:700;margin-top:6px;letter-spacing:-.01em}
+.sum-card .sub{font-size:11px;color:var(--sub);margin-top:3px}
+.sum-card .bar{position:absolute;left:0;right:0;bottom:0;height:3px}
+.sum-card.green .bar{background:var(--brand)}
+.sum-card.gold .bar{background:var(--gold)}
+.sum-card.warn .bar{background:var(--warn)}
+.sum-card.info .bar{background:var(--info)}
+
+/* ===== 提醒 ===== */
+.alert-strip{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.alert-strip .empty{color:var(--sub);font-size:13px}
+.alert-tag{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;font-size:12px;cursor:pointer;border:1px solid transparent}
+.alert-tag .dot{width:6px;height:6px;border-radius:50%;flex:none}
+.alert-tag.soon{background:var(--gold-soft);color:#8A6416;border-color:#EAD9AC}
+.alert-tag.soon .dot{background:var(--gold)}
+.alert-tag.over{background:var(--warn-soft);color:#9A4222;border-color:#F0CEBC}
+.alert-tag.over .dot{background:var(--warn)}
+
+/* ===== 看板主体两栏 ===== */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.panel h3{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.panel h3 .more{font-size:12px;color:var(--brand);font-weight:500;cursor:pointer}
+.chart-box{width:100%;height:250px}
+.rank-list{display:flex;flex-direction:column;gap:9px}
+.rank-note{font-size:11px;color:var(--sub);margin:-4px 0 8px}
+.rank-item{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.rank-item .idx{width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.rank-item:nth-child(1) .idx{background:var(--gold-soft);color:#8A6416}
+.rank-item .info{min-width:0}
+.rank-item .nm{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-item .meta{font-size:11px;color:var(--sub)}
+.rank-item .val{text-align:right}
+.rank-item .val b{font-size:14px}
+.rank-item .val span{display:block;font-size:11px;color:var(--sub)}
+.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;background:var(--info-soft);color:var(--info)}
+.tag.retired{background:#EFEFEA;color:#8A8F88}
+
+/* ===== 物品列表 ===== */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input[type=search]{flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:12px;color:var(--sub)}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn{padding:8px 14px;border-radius:8px;background:var(--brand);color:#fff;font-weight:600;font-size:13px}
+.btn.ghost{background:var(--card);color:var(--brand);border:1px solid var(--brand)}
+.btn.danger{background:var(--warn)}
+.item-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.item-table th,.item-table td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+.item-table th{background:#FAFBF8;color:var(--sub);font-size:12px;font-weight:600}
+.item-table tbody tr{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.item-table tbody tr:hover{background:#FAFCF9}
+.item-table td.nm{font-weight:600}
+.mini-bar{width:110px;height:6px;border-radius:3px;background:#EEF1EB;overflow:hidden}
+.mini-bar i{display:block;height:100%;border-radius:3px;background:var(--brand)}
+.mini-bar i.gold{background:var(--gold)}
+.mini-bar i.warn{background:var(--warn)}
+
+/* ===== 物品图片 ===== */
+.itm{display:flex;align-items:center;gap:9px;min-width:0}
+.itm .nm2{min-width:0}
+.thumb{width:34px;height:34px;border-radius:9px;background:var(--brand-soft);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:none;background-size:cover;background-position:center;overflow:hidden}
+.img-box{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.img-preview{width:92px;height:92px;border-radius:16px;background:var(--brand-soft);border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:var(--brand);cursor:pointer;background-size:cover;background-position:center;overflow:hidden;flex:none}
+.img-preview img{width:100%;height:100%;object-fit:cover}
+.img-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.img-actions .hint{font-size:11px;color:var(--sub)}
+
+/* ===== 视图切换 / 方块视图 ===== */
+.sort-select{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:12px;color:var(--ink);cursor:pointer;max-width:150px}
+.view-switch{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--card)}
+.view-switch button{padding:6px 10px;color:var(--sub);display:flex;align-items:center;justify-content:center}
+.view-switch button.on{background:var(--brand);color:#fff}
+.view-switch svg{width:15px;height:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;position:relative;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.card.sel{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+.card .pic{aspect-ratio:1/1;height:auto;width:100%;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:var(--brand);background-size:cover;background-position:center}
+.card .body{padding:10px 12px 12px}
+.card .name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .meta{font-size:11px;color:var(--sub);margin-top:2px}
+.card .row2{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px}
+.card .daily{font-size:16px;font-weight:700}
+.card .daily small{font-size:11px;color:var(--sub);font-weight:400}
+.card .tags{position:absolute;top:8px;left:8px;display:flex;gap:4px;flex-wrap:wrap}
+.card .tags .alert-tag{padding:3px 7px;font-size:10px}
+.card .check{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.92)}
+
+/* ===== 网状图视图 ===== */
+.graph-box{width:100%;height:560px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.link-tag{display:inline-block;padding:1px 7px;border-radius:5px;font-size:11px;background:var(--info-soft);color:var(--info);margin-left:6px}
+.link-tag.tight{background:var(--gold-soft);color:#8A6416}
+.link-row{display:flex;align-items:center;gap:8px;background:#FAFBF8;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.link-row .del{color:var(--warn);font-size:12px;cursor:pointer;margin-left:auto}
+
+/* ===== 多选 / 勾选 ===== */
+.check{width:22px;height:22px;border-radius:50%;border:2px solid #C9D2C6;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.check.on{background:var(--brand);border-color:var(--brand)}
+.check.on::after{content:'';width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.batch-bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1E2A23;color:#fff;border-radius:12px;padding:10px 16px;display:flex;align-items:center;gap:14px;z-index:80;box-shadow:0 6px 24px rgba(30,42,35,.25)}
+.batch-bar .cnt{font-size:13px;white-space:nowrap}
+.batch-bar .cnt b{font-size:15px}
+.batch-bar button{color:#E5B95C;font-size:13px;font-weight:600;white-space:nowrap}
+.batch-bar button.danger{color:#F2B8A0}
+
+/* ===== 右键 / 长按菜单 ===== */
+.ctx-menu{position:fixed;z-index:90;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(30,42,35,.18);padding:6px;min-width:124px}
+.ctx-menu button{display:block;width:100%;text-align:left;padding:8px 12px;border-radius:7px;font-size:13px}
+.ctx-menu button:hover{background:var(--brand-soft);color:var(--brand)}
+.ctx-menu button.danger{color:var(--warn)}
+.ctx-menu button.danger:hover{background:var(--warn-soft)}
+
+/* ===== 详情页 ===== */
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--sub);font-size:13px;margin-bottom:14px;cursor:pointer}
+.detail-head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.detail-head h1{font-size:22px;font-weight:800}
+.detail-head .cats{margin-left:auto;display:flex;gap:6px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kpi .l{font-size:11px;color:var(--sub)}
+.kpi .v{font-size:19px;font-weight:700;margin-top:4px}
+.kpi .v small{font-size:12px;font-weight:500;color:var(--sub)}
+.dep-bar{height:12px;border-radius:6px;background:#EEF1EB;position:relative;overflow:hidden}
+.dep-bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--brand),var(--gold))}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:14px}
+.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.field textarea{min-height:56px;resize:vertical}
+.extras-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.extra-row{display:grid;grid-template-columns:1fr 90px 80px auto;gap:8px;align-items:center;background:#FAFBF8;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+.extra-row .del{color:var(--warn);font-size:12px;cursor:pointer}
+.status-box{border:1px dashed var(--line);border-radius:var(--radius);padding:14px;margin-top:14px}
+.status-box .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.status-box .field{flex:1;min-width:130px}
+
+/* ===== 数据页 ===== */
+.data-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.data-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.data-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.data-card p{font-size:12px;color:var(--sub);margin-bottom:12px}
+.data-card .btns{display:flex;gap:8px;flex-wrap:wrap}
+.formula{background:#FAFBF8;border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px;font-size:13px;color:#3E4A42}
+.formula h3{font-size:14px;font-weight:700;margin-bottom:8px}
+.formula li{margin:6px 0 6px 18px}
+.formula code{background:var(--brand-soft);padding:1px 6px;border-radius:4px;font-size:12px;color:var(--brand)}
+
+/* ===== toast ===== */
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(80px);background:#1E2A23;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:99;opacity:0;transition:all .25s;pointer-events:none;max-width:88vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+footer{max-width:1120px;margin:0 auto;padding:0 16px 30px;color:#9AA39B;font-size:11px;text-align:center}
+
+/* ===== 移动端 ===== */
+@media (max-width:760px){
+  .summary-grid{grid-template-columns:repeat(2,1fr)}
+  .summary-grid .sum-card:last-child{grid-column:1/-1}
+  .dash-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr}
+  .item-table th:nth-child(4),.item-table td:nth-child(4),
+  .item-table th:nth-child(6),.item-table td:nth-child(6){display:none}
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .sort-select{max-width:118px}
+  .graph-box{height:460px}
+  main{padding-bottom:110px}
+  .brand small{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a class="brand" href="#/dashboard">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none"><path d="M4 17 L10 9 L14 13 L20 5" stroke="#E5B95C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="5" r="2.2" fill="#E5B95C"/></svg></span>
+      消费投资账<small>WORTH IT</small>
+    </a>
+    <div class="tabs" id="tabs">
+      <button data-action="nav" data-view="dashboard">看板</button>
+      <button data-action="nav" data-view="items">物品</button>
+      <button data-action="nav" data-view="data">数据</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ===== 视图：看板 ===== -->
+  <section id="view-dashboard" class="hidden"></section>
+
+  <!-- ===== 视图：物品 ===== -->
+  <section id="view-items" class="hidden"></section>
+
+  <!-- ===== 视图：单件详情 ===== -->
+  <section id="view-item" class="hidden"></section>
+
+  <!-- ===== 视图：数据 ===== -->
+  <section id="view-data" class="hidden"></section>
+
+</main>
+
+<div id="toast"></div>
+<div id="ctx-menu" class="ctx-menu hidden">
+  <button data-action="ctx-edit">编辑物品</button>
+  <button class="danger" data-action="ctx-delete">删除物品</button>
+</div>
+<footer>示例数据仅作演示 · 数据仅保存在本机浏览器，可随时导出备份</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script>
+'use strict';
+/* ============================================================
+ * ROI · 消费投资看板
+ * 口径说明：
+ * 摊薄法（日均持有成本）= (买入价+附加成本-回血) ÷ 持有天数
+ * 折旧法（双倍余额递减）= 残值 = max(买入价×残值率, 买入价×(1-2÷寿命)^持有年数)，先快后缓
+ * ============================================================ */
+var LS_KEY='worthit-db-v1';
+var LS_LEGACY='roi-db-v1';
+var IDB_NAME='worthit-images';var IDB_VER=2;var IDB_STORE='images';
+var _idbPromise=null;
+function idb(){if(_idbPromise)return _idbPromise;
+  _idbPromise=new Promise(function(res,rej){if(!window.indexedDB){rej(new Error('no-idb'));return;}
+    var rq=indexedDB.open(IDB_NAME,IDB_VER);
+    rq.onupgradeneeded=function(){var db=rq.result;
+      if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE);
+      if(!db.objectStoreNames.contains('data'))db.createObjectStore('data');};
+    rq.onsuccess=function(){res(rq.result);};
+    rq.onerror=function(){rej(rq.error);};});
+  return _idbPromise;}
+function imgSave(key,dataURL){return idb().then(function(db){return new Promise(function(res,rej){var tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).put(dataURL,key);tx.oncomplete=res;tx.onerror=function(){rej(tx.error);};});}).catch(function(e){toast('图片存储不可用（本环境限制），图片未保存');throw e;});}
+function imgLoad(key){if(!key)return Promise.resolve(null);return idb().then(function(db){return new Promise(function(res){var tx=db.transaction(IDB_STORE,'readonly');var rq=tx.objectStore(IDB_STORE).get(key);rq.onsuccess=function(){res(rq.result||null);};rq.onerror=function(){res(null);};});}).catch(function(){return null;});}
+function imgDel(key){if(!key)return Promise.resolve();return idb().then(function(db){return new Promise(function(res){var tx=db.transaction(IDB_STORE,'readwrite');tx.objectStore(IDB_STORE).delete(key);tx.oncomplete=res;tx.onerror=res;});}).catch(function(){});}
+function idbDataPut(key,val){return idb().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('data','readwrite');tx.objectStore('data').put(val,key);tx.oncomplete=res;tx.onerror=function(){rej(tx.error);};});}).catch(function(){});}
+function idbDataGet(key){return idb().then(function(db){return new Promise(function(res){var tx=db.transaction('data','readonly');var rq=tx.objectStore('data').get(key);rq.onsuccess=function(){res(rq.result||null);};rq.onerror=function(){res(null);};});}).catch(function(){return null;});}
+function idbDataDel(key){return idb().then(function(db){return new Promise(function(res){var tx=db.transaction('data','readwrite');tx.objectStore('data').delete(key);tx.oncomplete=res;tx.onerror=res;});}).catch(function(){});}
+function compressImage(file,maxSide){
+  return new Promise(function(res,rej){
+    var img=new Image(),url=URL.createObjectURL(file);
+    img.onload=function(){
+      var w=img.width,h=img.height;var scale=Math.min(1,(maxSide||600)/Math.max(w,h));
+      var cw=Math.max(1,Math.round(w*scale)),ch=Math.max(1,Math.round(h*scale));
+      var cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+      cv.getContext('2d').drawImage(img,0,0,cw,ch);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);rej(new Error('img-load'));};
+    img.src=url;
+  });
+}
+var CATS=['数码','家电','服饰','运动','美妆个护','家居','户外','收藏','书籍','其他'];
+var STATE={items:[],view:'dashboard',itemId:null,pendingImage:null,pendingExtras:[],pendingLinks:[],viewMode:'list',batchMode:false,selected:new Set(),filteredIds:[],ctxId:null,suppressClick:0,sort:'default',filter:{cat:'全部',status:'全部',q:''},charts:{}};
+
+/* ---------- 工具 ---------- */
+function today(){var d=new Date();d.setHours(0,0,0,0);return d;}
+function parseDate(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function fmtDate(d){function p(n){return n<10?'0'+n:''+n;}return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function addMonths(d,n){return new Date(d.getFullYear(),d.getMonth()+n,d.getDate());}
+function addYears(d,n){return new Date(d.getFullYear()+n,d.getMonth(),d.getDate());}
+function daysBetween(a,b){return Math.round((b-a)/86400000);}
+function uid(){return 'it'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function fmtMoney(n){if(!isFinite(n))return '—';return '¥'+Math.round(n).toLocaleString('zh-CN');}
+function fmtMoney1(n){if(!isFinite(n))return '—';return '¥'+n.toLocaleString('zh-CN',{minimumFractionDigits:1,maximumFractionDigits:2});}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},2200);}
+
+/* ---------- 计算口径 ---------- */
+function holdingDays(it){var end=it.status==='retired'&&it.retireDate?parseDate(it.retireDate):today();return Math.max(1,daysBetween(parseDate(it.purchaseDate),end));}
+function totalExtras(it){return it.extras.reduce(function(s,e){return s+(+e.amount||0);},0);}
+function totalCost(it){return (+it.purchasePrice||0)+totalExtras(it);}
+function saleProceeds(it){return (it.status==='retired'&&it.salePrice)?(+it.salePrice):0;}
+function dailyCost(it){return (totalCost(it)-saleProceeds(it))/holdingDays(it);}
+/* 使用频率 → 次均使用成本（估算口径） */
+const FREQ_OPTS=[
+  {v:'daily',label:'每天',perDay:1},
+  {v:'w3',label:'每周 2-3 次',perDay:3/7},
+  {v:'w1',label:'每周 1 次',perDay:1/7},
+  {v:'m2',label:'每月 2-3 次',perDay:2.5/30},
+  {v:'m1',label:'每月 1 次',perDay:1/30},
+  {v:'rare',label:'几乎不用（每季度 ≤1 次）',perDay:1/90}
+];
+const FREQ_MAP={};FREQ_OPTS.forEach(o=>FREQ_MAP[o.v]=o);
+function freqLabel(v){return v&&FREQ_MAP[v]?FREQ_MAP[v].label:'—';}
+function totalUses(it){const d=holdingDays(it),p=(FREQ_MAP[it.frequency]||{}).perDay||0;return d*p>0?Math.max(1,d*p):0;}
+function perUseCost(it){const u=totalUses(it);return u>0?(totalCost(it)-saleProceeds(it))/u:null;}
+function annualDep(it){var p=+it.purchasePrice||0;return p*2/(+it.lifespanYears||1);}
+function residualValue(it){var p=+it.purchasePrice||0;var yrs=daysBetween(parseDate(it.purchaseDate),today())/365;var floor=p*(+it.salvageRate||0);return Math.max(floor,p*Math.pow(1-2/(+it.lifespanYears||1),Math.max(0,yrs)));}
+function depreciatedAmt(it){if(it.status==='retired'){return totalCost(it)-saleProceeds(it);}return (+it.purchasePrice||0)-residualValue(it);}
+function depProgress(it){var p=+it.purchasePrice||0;return p?Math.min(1,Math.max(0,depreciatedAmt(it)/p)):0;}
+function lifeEnd(it){return addYears(parseDate(it.purchaseDate),+it.lifespanYears||1);}
+function warrantyEnd(it){return addMonths(parseDate(it.purchaseDate),+it.warrantyMonths||0);}
+function alertsOf(it){var arr=[];if(it.status!=='active')return arr;
+  var end=lifeEnd(it);var remain=daysBetween(today(),end);
+  if(remain<0){arr.push({type:'life',level:'over',text:'已超预期寿命 '+Math.abs(remain)+' 天',id:it.id});}
+  else if(remain<=90){arr.push({type:'life',level:'soon',text:'预计 '+remain+' 天后退役',id:it.id});}
+  if(it.warrantyMonths>0){var we=warrantyEnd(it);var wr=daysBetween(today(),we);
+    if(wr<0){arr.push({type:'warranty',level:'over',text:'保修已过期 '+Math.abs(wr)+' 天',id:it.id});}
+    else if(wr<=30){arr.push({type:'warranty',level:'soon',text:'保修 '+wr+' 天后到期',id:it.id});}}
+  return arr;}
+function residualTimeline(it){var pts=[];var start=parseDate(it.purchaseDate);var years=+it.lifespanYears||1;var end=addYears(start,years);
+  var p=+it.purchasePrice||0;var floor=p*(+it.salvageRate||0);var r=2/years;
+  var months=Math.max(1,Math.round((end-start)/86400000/30.44));
+  for(var i=0;i<=months;i++){var d=new Date(start.getFullYear(),start.getMonth()+i,start.getDate());var v=Math.max(floor,Math.round(p*Math.pow(1-r,i/12)));pts.push([fmtDate(d),v]);}
+  return pts;}
+
+/* ---------- 存储（三级：IndexedDB 主存储 + localStorage 双写 + 数据文件绑定） ---------- */
+var _fileT=null;
+function save(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify({v:1,items:STATE.items}));}catch(e){}
+  idbDataPut('items',STATE.items);
+  clearTimeout(_fileT);_fileT=setTimeout(saveFileNow,600);
+}
+function saveFileNow(){
+  idbDataGet('fileHandle').then(function(h){
+    if(!h)return;
+    return h.createWritable().then(function(w){
+      return w.write(JSON.stringify({app:'worthit-dashboard',v:2,items:STATE.items},null,2)).then(function(){return w.close();});
+    });
+  }).catch(function(){});
+}
+function syncLS(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify({v:1,items:STATE.items}));}catch(e){}
+}
+function loadFromFile(){
+  return idbDataGet('fileHandle').then(function(h){
+    if(!h)return false;
+    return h.getFile().then(function(f){return f.text();}).then(function(txt){
+      var d=JSON.parse(txt);
+      if(d.items&&d.items.length){STATE.items=d.items;idbDataPut('items',STATE.items);syncLS();return true;}
+      return false;
+    }).catch(function(){return false;});
+  });
+}
+function loadAll(){
+  loadFromFile().then(function(fromFile){
+    if(fromFile)return;
+    return idbDataGet('items').then(function(items){
+      if(items&&items.length){STATE.items=items;syncLS();}
+      else{
+        try{var raw=localStorage.getItem(LS_KEY)||localStorage.getItem(LS_LEGACY);if(raw){var d=JSON.parse(raw);STATE.items=d.items||[];}}catch(e){STATE.items=[];}
+      }
+    });
+  }).catch(function(){}).then(function(){
+    if(!STATE.items.length){STATE.items=sampleItems();save();}
+    route();
+  });
+}
+function supportsFSA(){return typeof window.showSaveFilePicker==='function';}
+function bindDataFile(){
+  if(!supportsFSA()){toast('当前浏览器不支持文件绑定，请使用导出/导入备份');return;}
+  window.showSaveFilePicker({suggestedName:'worthit-data.json',types:[{description:'JSON 数据',accept:{'application/json':['.json']}}]}).then(function(handle){
+    return handle.createWritable().then(function(w){
+      return w.write(JSON.stringify({app:'worthit-dashboard',v:2,items:STATE.items},null,2)).then(function(){return w.close();}).then(function(){return handle;});
+    });
+  }).then(function(handle){
+    return idbDataPut('fileHandle',handle).then(function(){toast('已绑定数据文件，此后每次修改自动保存');renderData();});
+  }).catch(function(e){
+    if(e&&e.name!=='AbortError'){toast('绑定失败：'+e.message);}
+  });
+}
+function unbindDataFile(){
+  if(!confirm('解除数据文件绑定？此后数据只保存在浏览器内。'))return;
+  idbDataDel('fileHandle').then(function(){toast('已解除绑定');renderData();});
+}
+function load(){
+  try{var raw=localStorage.getItem(LS_KEY)||localStorage.getItem(LS_LEGACY);if(raw){var d=JSON.parse(raw);STATE.items=d.items||[];return;}}catch(e){}
+  STATE.items=[];
+}
+try{const _vm=localStorage.getItem('worthit-view');STATE.viewMode=(_vm==='grid'||_vm==='graph')?_vm:'list';}catch(e){}
+try{STATE.sort=localStorage.getItem('worthit-sort')||'default';}catch(e){}
+function sampleItems(){return [
+  {id:'it_demo_iphone',sub:'手机',name:'iPhone 15 Pro 256GB',category:'数码',purchaseDate:'2023-10-01',purchasePrice:7999,lifespanYears:3,salvageRate:0.10,warrantyMonths:36,status:'active',retireDate:null,salePrice:null,notes:'主力机，屏幕更换过一次',frequency:'daily',links:[{id:'it_demo_x100v',weight:1}],extras:[{id:'ex1',date:'2025-06-10',name:'换电池',amount:519}]},
+  {id:'it_demo_mba',sub:'笔记本',name:'MacBook Air M2',category:'数码',purchaseDate:'2023-03-15',purchasePrice:8999,lifespanYears:4,salvageRate:0.10,warrantyMonths:12,status:'active',retireDate:null,salePrice:null,notes:'',frequency:'daily',links:[{id:'it_demo_k3',weight:2},{id:'it_demo_x100v',weight:1}],extras:[]},
+  {id:'it_demo_arcteryx',sub:'外套',name:'Arc’teryx Beta LT 冲锋衣',category:'服饰',purchaseDate:'2022-11-20',purchasePrice:5200,lifespanYears:5,salvageRate:0.20,warrantyMonths:0,status:'active',retireDate:null,salePrice:null,notes:'日常通勤 + 徒步主力',frequency:'w1',extras:[{id:'ex2',date:'2024-08-01',name:'补胶修复',amount:200}]},
+  {id:'it_demo_puri',sub:'环境电器',name:'小米空气净化器 4 Pro',category:'家电',purchaseDate:'2021-06-01',purchasePrice:1299,lifespanYears:5,salvageRate:0.05,warrantyMonths:12,status:'active',retireDate:null,salePrice:null,notes:'',frequency:'daily',extras:[]},
+  {id:'it_demo_pegasus',sub:'跑鞋',name:'Nike Pegasus 40 跑鞋',category:'运动',purchaseDate:'2024-03-10',purchasePrice:899,lifespanYears:2,salvageRate:0.05,warrantyMonths:0,status:'active',retireDate:null,salePrice:null,notes:'已退役为日常鞋',frequency:'w3',extras:[]},
+  {id:'it_demo_lego',sub:'积木',name:'乐高 76405 霍格沃茨特快',category:'收藏',purchaseDate:'2022-12-25',purchasePrice:1999,lifespanYears:10,salvageRate:0.60,warrantyMonths:0,status:'active',retireDate:null,salePrice:null,notes:'收藏品，保值率高',frequency:'rare',extras:[]},
+  {id:'it_demo_delonghi',sub:'厨房电器',name:'德龙 ECAM23.260 咖啡机',category:'家电',purchaseDate:'2023-09-01',purchasePrice:2499,lifespanYears:5,salvageRate:0.10,warrantyMonths:37,status:'active',retireDate:null,salePrice:null,notes:'每天 2 杯',frequency:'daily',extras:[]},
+  {id:'it_demo_x100v',sub:'相机',name:'富士 X100V 相机',category:'数码',purchaseDate:'2021-08-15',purchasePrice:9600,lifespanYears:5,salvageRate:0.40,warrantyMonths:12,status:'retired',retireDate:'2024-05-20',salePrice:7000,notes:'闲鱼出掉，回血 7000',frequency:'w1',links:[{id:'it_demo_iphone',weight:1},{id:'it_demo_mba',weight:1}],extras:[{id:'ex3',date:'2022-03-01',name:'UV 滤镜',amount:180}]},
+  {id:'it_demo_k3',sub:'外设',name:'Keychron K3 机械键盘',category:'数码',purchaseDate:'2023-05-01',purchasePrice:449,lifespanYears:3,salvageRate:0.05,warrantyMonths:0,status:'active',retireDate:null,salePrice:null,notes:'',frequency:'daily',links:[{id:'it_demo_mba',weight:2}],extras:[]},
+  {id:'it_demo_dyson',sub:'个护电器',name:'戴森 HD08 吹风机',category:'美妆个护',purchaseDate:'2020-11-11',purchasePrice:2990,lifespanYears:5,salvageRate:0.10,warrantyMonths:24,status:'retired',retireDate:'2025-03-01',salePrice:null,notes:'电机故障报废',frequency:'w3',links:[{id:'it_demo_delonghi',weight:1}],extras:[]}
+];}
+/* ---------- 汇总 ---------- */
+function summary(){
+  let inv=0,dep=0,proc=0,daily=0,res=0;
+  STATE.items.forEach(it=>{inv+=totalCost(it);dep+=depreciatedAmt(it);proc+=saleProceeds(it);daily+=dailyCost(it);if(it.status==='active')res+=residualValue(it);});
+  return {inv,dep,proc,daily,res,active:STATE.items.filter(i=>i.status==='active').length};
+}
+function allAlerts(){const a=[];STATE.items.forEach(it=>a.push(...alertsOf(it)));return a.sort((x,y)=>x.level===y.level?0:x.level==='over'?-1:1);}
+
+/* ---------- 视图切换 ---------- */
+function route(){
+  const h=location.hash||'#/dashboard';
+  let m=h.match(/^#\/item(?:\?id=(.+))?$/);
+  if(m){STATE.itemId=m[1]||null;show('view-item');renderItemDetail();return;}
+  if(h.indexOf('#/items')===0){STATE.view='items';show('view-items');renderItems();return;}
+  if(h.indexOf('#/data')===0){STATE.view='data';show('view-data');renderData();return;}
+  STATE.view='dashboard';show('view-dashboard');renderDashboard();
+}
+function show(id){
+  ['view-dashboard','view-items','view-item','view-data'].forEach(v=>document.getElementById(v).classList.toggle('hidden',v!==id));
+  Object.keys(STATE.charts).forEach(k=>{if(STATE.charts[k]){STATE.charts[k].dispose();delete STATE.charts[k];}});
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.view===({dashboard:'dashboard',items:'items',data:'data','view-item':''}[id]||'')||b.dataset.view===({dashboard:'dashboard',items:'items',data:'data'}[id])));
+  window.scrollTo(0,0);
+}
+function go(view){location.hash='#/'+view;}
+
+/* ---------- 看板 ---------- */
+function renderDashboard(){
+  const s=summary();
+  const alerts=allAlerts();
+  let al=alerts.map(a=>`<span class="alert-tag ${a.level}" data-action="open-item" data-id="${a.id}"><i class="dot"></i>${esc(a.text)}</span>`).join('');
+  document.getElementById('view-dashboard').innerHTML=`
+  <div class="summary-grid">
+    <div class="sum-card green"><div class="label">总投入</div><div class="value num">${fmtMoney(s.inv)}</div><div class="sub">买入 ${STATE.items.length} 件 + 附加成本</div><div class="bar"></div></div>
+    <div class="sum-card warn"><div class="label">已折旧</div><div class="value num">${fmtMoney(s.dep)}</div><div class="sub">已消耗掉的钱</div><div class="bar"></div></div>
+    <div class="sum-card gold"><div class="label">二手回血</div><div class="value num">${fmtMoney(s.proc)}</div><div class="sub">卖出 ${STATE.items.filter(i=>i.salePrice>0).length} 件</div><div class="bar"></div></div>
+    <div class="sum-card info"><div class="label">总日均成本</div><div class="value num">${fmtMoney1(s.daily)}<small> /天</small></div><div class="sub">全部物品摊薄合计</div><div class="bar"></div></div>
+    <div class="sum-card green"><div class="label">当前资产残值</div><div class="value num">${fmtMoney(s.res)}</div><div class="sub">${s.active} 件在役，按双倍余额递减</div><div class="bar"></div></div>
+  </div>
+  <div class="section-title"><h2>提醒</h2><span class="note">即将退役 / 保修到期</span></div>
+  <div class="alert-strip">${alerts.length?al:'<span class="empty">暂无到期提醒，所有在役物品状态健康</span>'}</div>
+  <div class="dash-grid">
+    <div class="panel"><h3>投入分布 · 按品类</h3><div id="chart-cat" class="chart-box"></div></div>
+    <div class="panel"><h3>最值 Top 5<span class="more" data-action="nav" data-view="items">全部物品 →</span></h3>
+      <div class="rank-note">按次均使用成本升序 · 未设使用频率不计</div>
+      <div class="rank-list">${rankHTML(sortedByPerUse(false),'peruse')}</div></div>
+    <div class="panel"><h3>最亏 Top 5</h3>
+      <div class="rank-note">按次均使用成本降序 · 未设使用频率不计</div>
+      <div class="rank-list">${rankHTML(sortedByPerUse(true),'peruse')}</div></div>
+    <div class="panel"><h3>持仓最久 Top 5</h3>
+      <div class="rank-list">${rankHTML(sortedByHold(),'days')}</div></div>
+  </div>`;
+  renderCatChart(s);
+}
+function sortedByPerUse(desc){return STATE.items.filter(it=>perUseCost(it)!=null).sort((a,b)=>desc?perUseCost(b)-perUseCost(a):perUseCost(a)-perUseCost(b)).slice(0,5);}
+function sortedByHold(){return STATE.items.slice().sort((a,b)=>holdingDays(b)-holdingDays(a)).slice(0,5);}
+function rankHTML(list,unit){
+  if(!list.length)return '<div class="empty" style="color:var(--sub);font-size:12px">暂无物品</div>';
+  return list.map((it,i)=>`
+    <div class="rank-item" data-action="open-item" data-id="${it.id}" style="cursor:pointer">
+      <span class="idx">${i+1}</span>
+      <div class="info"><div class="nm">${esc(it.name)}</div><div class="meta">${esc(it.category)} · 持有 ${holdingDays(it)} 天 · 投入 ${fmtMoney(totalCost(it))}</div></div>
+      <div class="val">${unit==='days'?`<b class="num">${holdingDays(it)}</b><span>天</span>`:`<b class="num">${perUseCost(it)!=null?fmtMoney1(perUseCost(it)):'—'}</b><span>元/次</span>`}</div>
+    </div>`).join('');
+}
+function renderCatChart(s){
+  const map={};STATE.items.forEach(it=>{const c=it.category||'其他';map[c]=(map[c]||0)+totalCost(it);});
+  const data=Object.keys(map).map(k=>({name:k,value:Math.round(map[k])}));
+  if(!STATE.charts.cat)STATE.charts.cat=echarts.init(document.getElementById('chart-cat'));
+  STATE.charts.cat.setOption({
+    tooltip:{trigger:'item',triggerOn:'click',renderMode:'richText',confine:true,formatter:p=>`${p.name}<br/>投入 ${fmtMoney(p.value)}（${p.percent}%）`},
+    legend:{bottom:0,textStyle:{fontSize:11,color:'#6B7A70'}},
+    series:[{type:'pie',radius:['42%','68%'],center:['50%','44%'],itemStyle:{borderColor:'#fff',borderWidth:2},
+      label:{fontSize:11,color:'#3E4A42',formatter:'{b}'},
+      data,
+      color:['#2F6B4F','#B98A2F','#3E6B8E','#C0552E','#7A8F6B','#8E7BA6','#C98A5A','#5B8E8E','#A6A27A','#9AA39B']}]
+  });
+}
+
+/* ---------- 物品列表 ---------- */
+function sortList(list){
+  if(!STATE.sort||STATE.sort==='default')return list;
+  const parts=STATE.sort.split('-');const key=parts[0],dir=parts[1];
+  let f;
+  if(key==='date')f=(a,b)=>parseDate(a.purchaseDate)-parseDate(b.purchaseDate);
+  else if(key==='daily')f=(a,b)=>dailyCost(a)-dailyCost(b);
+  else if(key==='hold')f=(a,b)=>holdingDays(a)-holdingDays(b);
+  else if(key==='cost')f=(a,b)=>totalCost(a)-totalCost(b);
+  else if(key==='name')f=(a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh');
+  if(!f)return list;
+  return list.slice().sort((a,b)=>dir==='desc'?f(b,a):f(a,b));
+}
+function renderItems(){
+  const cats=['全部',...CATS.filter(c=>STATE.items.some(i=>i.category===c))];
+  const chips=cats.map(c=>`<button class="chip ${STATE.filter.cat===c?'on':''}" data-action="chip" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  const statusChips=['全部','在役','已退役'].map(s=>`<button class="chip ${STATE.filter.status===(s==='全部'?'全部':s==='在役'?'active':'retired')?'on':''}" data-action="status-chip" data-status="${s==='全部'?'全部':s==='在役'?'active':'retired'}">${s}</button>`).join('');
+  let list=STATE.items.filter(it=>{
+    if(STATE.filter.cat!=='全部'&&it.category!==STATE.filter.cat)return false;
+    if(STATE.filter.status!=='全部'&&it.status!==STATE.filter.status)return false;
+    if(STATE.filter.q&&it.name.toLowerCase().indexOf(STATE.filter.q.toLowerCase())<0)return false;
+    return true;});
+  list=sortList(list);
+  STATE.filteredIds=list.map(i=>i.id);
+  const isSel=id=>STATE.selected.has(id);
+  const checkHTML=id=>`<span class="check ${isSel(id)?'on':''}" data-action="toggle-select" data-id="${id}"></span>`;
+  const tagOf=it=>`<span class="tag ${it.status==='retired'?'retired':''}">${it.status==='retired'?'已退役':esc(it.category)}</span>`;
+  const alsOf=it=>alertsOf(it).map(a=>`<span class="alert-tag ${a.level}"><i class="dot"></i>${a.level==='over'?'超期':'将到期'}</span>`).join('');
+  const barOf=it=>{const p=depProgress(it);const c=p>0.9?'warn':p>0.6?'gold':'';return `<div class="mini-bar"><i class="${c}" style="width:${Math.round(p*100)}%"></i></div>`;};
+  const rowHTML=it=>`<tr data-action="open-item" data-id="${it.id}" data-ctx="${it.id}">
+      <td><div class="itm">${STATE.batchMode?checkHTML(it.id):''}<span class="thumb" data-img="${it.imageKey||''}">${esc((it.name||'?').charAt(0))}</span><div class="nm2"><div class="nm">${esc(it.name)}</div>${tagOf(it)} ${alsOf(it)}</div></div></td>
+      <td>${esc(it.category)}</td>
+      <td class="num">${holdingDays(it)} 天</td>
+      <td class="num"><b>${fmtMoney1(dailyCost(it))}</b>${perUseCost(it)!=null?`<div style="font-size:11px;color:var(--sub);font-weight:400">次均 ${fmtMoney1(perUseCost(it))} 元</div>`:''}</td>
+      <td>${barOf(it)}<span class="num" style="font-size:11px;color:var(--sub)">残值 ${fmtMoney(it.status==='active'?residualValue(it):saleProceeds(it)||0)}</span></td>
+      <td class="num">${fmtMoney(totalCost(it))}</td>
+    </tr>`;
+  const cardHTML=it=>`<div class="card ${isSel(it.id)?'sel':''}" data-action="open-item" data-id="${it.id}" data-ctx="${it.id}">
+      ${STATE.batchMode?checkHTML(it.id):''}
+      <div class="tags">${alsOf(it)}</div>
+      <div class="pic" data-img="${it.imageKey||''}">${esc((it.name||'?').charAt(0))}</div>
+      <div class="body">
+        <div class="name">${esc(it.name)}</div>
+        <div class="meta">${tagOf(it)} · 持有 ${holdingDays(it)} 天</div>
+        <div class="row2"><span class="daily num">${fmtMoney1(dailyCost(it))}<small> 元/天</small></span><span class="num" style="font-size:11px;color:var(--sub)">${it.status==='active'?'残值 '+fmtMoney(residualValue(it)):'回血 '+fmtMoney(saleProceeds(it)||0)}</span></div>
+        ${perUseCost(it)!=null?`<div class="meta" style="margin-top:4px">次均 ≈ ${fmtMoney1(perUseCost(it))} 元/次${it.frequency?' · '+freqLabel(it.frequency):''}</div>`:''}
+        ${barOf(it)}
+      </div>
+    </div>`;
+  const viewSwitch=`<div class="view-switch">
+      <button class="${STATE.viewMode==='list'?'on':''}" data-action="toggle-view" data-mode="list" title="列表视图"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="${STATE.viewMode==='grid'?'on':''}" data-action="toggle-view" data-mode="grid" title="方块视图"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg></button>
+      <button class="${STATE.viewMode==='graph'?'on':''}" data-action="toggle-view" data-mode="graph" title="网状图视图"><svg viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="2.6" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="6" r="2.6" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="2.6" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5L15.5 6.5M8.3 9.4L10.8 15M15.7 8.5L13.4 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    </div>`;
+  const batchBtn=`<button class="btn ghost ${STATE.batchMode?'on':''}" data-action="batch-mode">${STATE.batchMode?'退出多选':'多选'}</button>`;
+  const sortSel=`<select class="sort-select" id="sort-select" title="排序方式">
+      <option value="default" ${STATE.sort==='default'?'selected':''}>默认顺序</option>
+      <option value="date-desc" ${STATE.sort==='date-desc'?'selected':''}>购买日期 新→旧</option>
+      <option value="date-asc" ${STATE.sort==='date-asc'?'selected':''}>购买日期 旧→新</option>
+      <option value="daily-desc" ${STATE.sort==='daily-desc'?'selected':''}>日均成本 高→低</option>
+      <option value="daily-asc" ${STATE.sort==='daily-asc'?'selected':''}>日均成本 低→高</option>
+      <option value="hold-desc" ${STATE.sort==='hold-desc'?'selected':''}>持有天数 多→少</option>
+      <option value="hold-asc" ${STATE.sort==='hold-asc'?'selected':''}>持有天数 少→多</option>
+      <option value="cost-desc" ${STATE.sort==='cost-desc'?'selected':''}>总投入 高→低</option>
+      <option value="cost-asc" ${STATE.sort==='cost-asc'?'selected':''}>总投入 低→高</option>
+      <option value="name-asc" ${STATE.sort==='name-asc'?'selected':''}>名称 A→Z</option>
+    </select>`;
+  const body=STATE.viewMode==='grid'
+    ? `<div class="grid">${list.map(cardHTML).join('')}</div>`
+    : (STATE.viewMode==='graph'
+      ? `<div id="graph-box" class="graph-box"></div><div style="color:var(--sub);font-size:12px;margin-top:8px">实线＝手动关联（越粗越紧密）；虚线＝同分类自动关联；拖拽可调整布局，点击节点查看物品。</div>`
+      : `<table class="item-table"><colgroup><col style="width:34%"><col style="width:10%"><col style="width:12%"><col style="width:14%"><col style="width:18%"><col style="width:12%"></colgroup>
+    <thead><tr><th>物品</th><th>分类</th><th>持有天数</th><th>日均成本</th><th>折旧 / 残值</th><th>总投入</th></tr></thead>
+    <tbody>${list.map(rowHTML).join('')}</tbody></table>`);
+  const batchBar=STATE.batchMode?`<div class="batch-bar">
+      <span class="cnt">已选 <b>${STATE.selected.size}</b> 件</span>
+      <button data-action="select-all">${STATE.filteredIds.length&&STATE.selected.size===STATE.filteredIds.length?'取消全选':'全选'}</button>
+      <button class="danger" data-action="batch-delete">删除选中</button>
+      <button data-action="batch-mode">完成</button>
+    </div>`:'';
+  document.getElementById('view-items').innerHTML=`
+    <div class="section-title"><h2>物品清单</h2><span class="note">共 ${list.length} 件</span><button class="btn" style="margin-left:auto" data-action="add-item">+ 新增物品</button></div>
+    <div class="toolbar">
+      <input type="search" id="item-search" placeholder="搜索物品名称…" value="${esc(STATE.filter.q)}">
+      ${chips}${statusChips}
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">${sortSel}${batchBtn}${viewSwitch}</div>
+    </div>
+    ${list.length?body:'<div class="panel" style="color:var(--sub)">没有符合条件的物品</div>'}
+    ${batchBar}`;
+  document.getElementById('item-search').addEventListener('input',e=>{STATE.filter.q=e.target.value;renderItems();});
+  list.filter(i=>i.imageKey).forEach(function(it){
+    imgLoad(it.imageKey).then(function(d){if(!d)return;document.querySelectorAll('#view-items [data-img="'+it.imageKey+'"]').forEach(function(el){el.style.backgroundImage='url("'+d+'")';el.textContent='';});});
+  });
+  if(STATE.viewMode==='graph')setTimeout(function(){renderGraphChart(list);},0);
+}
+
+/* ---------- 网状图 ---------- */
+const CAT_COLORS={'数码':'#2F6B4F','家电':'#3E6B8E','服饰':'#B98A2F','运动':'#C0552E','美妆个护':'#8E7BA6','家居':'#7A8F6B','户外':'#5B8E8E','收藏':'#C98A5A','书籍':'#A6A27A','其他':'#9AA39B'};
+function catColor(c){return CAT_COLORS[c]||'#9AA39B';}
+/* 网状图配色：大类色相均匀分布（强对比），同大类子分类只调明暗饱和（相近） */
+const CAT_HUES={'数码':144,'家电':216,'服饰':72,'运动':288,'美妆个护':252,'家居':108,'户外':180,'收藏':36,'书籍':324,'其他':0};
+function nodeColor(it){
+  const c=it.category||'其他';
+  const h=CAT_HUES[c]!==undefined?CAT_HUES[c]:((c.charCodeAt(0)*37)%360);
+  if(!it.sub)return 'hsl('+h+',62%,50%)';
+  let k=0;const s=String(it.sub);for(let i=0;i<s.length;i++)k=(k*31+s.charCodeAt(i))%997;
+  return 'hsl('+h+','+(52+(k%5)*5)+'%,'+(38+(k%7)*4)+'%)';
+}
+function nodeStyle(it){
+  const c=nodeColor(it);const days=holdingDays(it);
+  if(days<365)return {color:c,borderColor:'#fff',borderWidth:2};
+  if(days<1095)return {color:hslAlpha(c,0.6),borderColor:'#fff',borderWidth:2};
+  return {color:hslAlpha(c,0.28),borderColor:'rgba(47,75,66,0.5)',borderWidth:2.5,borderType:'dashed'};
+}
+function hslAlpha(hsl,a){return hsl.replace('hsl','hsla').replace(')',','+a+')');}
+function computeGraphLayout(nodes,edges,W,H){
+  const byId={};nodes.forEach(n=>byId[n.id]=n);
+  const N=nodes.length;
+  nodes.forEach(function(n,i){
+    const a=i/N*Math.PI*2;
+    n.x=W/2+Math.cos(a)*Math.min(W,H)*0.28;
+    n.y=H/2+Math.sin(a)*Math.min(W,H)*0.28;
+    n.vx=0;n.vy=0;
+  });
+  for(let iter=0;iter<90;iter++){
+    for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+      const a=nodes[i],b=nodes[j];
+      let dx=a.x-b.x,dy=a.y-b.y;
+      let d2=dx*dx+dy*dy;if(d2<4)d2=4;
+      const d=Math.sqrt(d2);
+      const f=1400/d2;
+      const fx=dx/d*f,fy=dy/d*f;
+      a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy;
+    }
+    edges.forEach(function(e){
+      const a=byId[e.source],b=byId[e.target];if(!a||!b)return;
+      const ideal=e.value>=2?55:(e.value>=1?85:150);
+      let dx=a.x-b.x,dy=a.y-b.y;
+      const d=Math.sqrt(dx*dx+dy*dy)||1;
+      const f=(d-ideal)*0.035;
+      const fx=dx/d*f,fy=dy/d*f;
+      a.vx-=fx;a.vy-=fy;b.vx+=fx;b.vy+=fy;
+    });
+    nodes.forEach(function(n){
+      n.vx=(n.vx-n.x*0.006)*0.82;
+      n.vy=(n.vy-n.y*0.006)*0.82;
+      n.x+=n.vx;n.y+=n.vy;
+    });
+  }
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  nodes.forEach(function(n){if(n.x<minX)minX=n.x;if(n.x>maxX)maxX=n.x;if(n.y<minY)minY=n.y;if(n.y>maxY)maxY=n.y;});
+  const pad=60,sx=(W-pad*2)/Math.max(maxX-minX,1),sy=(H-pad*2)/Math.max(maxY-minY,1),s=Math.min(sx,sy);
+  return nodes.map(function(n){return {x:(n.x-(minX+maxX)/2)*s+W/2,y:(n.y-(minY+maxY)/2)*s+H/2};});
+}
+function renderGraphChart(list){
+  const el=document.getElementById('graph-box');if(!el)return;
+  if(STATE.charts.graph){STATE.charts.graph.dispose();delete STATE.charts.graph;}
+  const ids=new Set(list.map(i=>i.id));
+  const dmax=Math.max(0.001,...list.map(it=>dailyCost(it)));
+  const nodes=list.map(it=>({
+    id:it.id,name:it.name,category:it.category,
+    symbolSize:Math.round(14+Math.sqrt(Math.max(0,dailyCost(it)))/Math.sqrt(dmax)*26),
+    itemStyle:nodeStyle(it),
+    label:{show:true,formatter:function(){return it.name;},fontSize:10,color:'#3E4A42',position:'bottom'},
+    tooltip:{formatter:function(){return '<b>'+esc(it.name)+'</b><br/>'+esc(it.category)+(it.sub?' · '+esc(it.sub):'')+(it.status==='retired'?' · 已退役':'')+'<br/>日均 '+fmtMoney1(dailyCost(it))+'/天'+(perUseCost(it)!=null?'<br/>次均 ≈ '+fmtMoney1(perUseCost(it))+'/次':'')+'<br/>'+(it.status==='active'?'残值 '+fmtMoney(residualValue(it)):'回血 '+fmtMoney(saleProceeds(it)||0));}},
+    value:[dailyCost(it),residualValue(it)]
+  }));
+  const edges=[];const seen=new Set();
+  list.forEach(it=>(it.links||[]).forEach(l=>{
+    if(!ids.has(l.id))return;
+    const k=[it.id,l.id].sort().join('|');if(seen.has(k))return;seen.add(k);
+    const w=+l.weight||1;
+    edges.push({source:it.id,target:l.id,value:w,
+      lineStyle:{width:w*2.4,color:w>=2?'#B98A2F':'#2F6B4F',curveness:0.08},symbol:'none'});
+  }));
+  for(let i=0;i<list.length;i++){
+    for(let j=i+1;j<list.length;j++){
+      const a=list[i],b=list[j];
+      if(a.category!==b.category)continue;
+      const k=[a.id,b.id].sort().join('|');if(seen.has(k))continue;seen.add(k);
+      edges.push({source:a.id,target:b.id,value:0.4,
+        lineStyle:{width:1,color:'#C9D2C6',type:'dashed'},symbol:'none'});
+    }
+  }
+  // 自写同步力导向布局（不依赖动画帧，任何环境即时渲染；同分类弱边引力→靠近，手动紧密关联引力更强→更近）
+  const W=el.clientWidth||660,H=el.clientHeight||460;
+  const pos=computeGraphLayout(nodes,edges,W,H);
+  nodes.forEach(function(n,i){n.x=pos[i].x;n.y=pos[i].y;});
+  if(!STATE.charts.graph)STATE.charts.graph=echarts.init(el);
+  STATE.charts.graph.setOption({
+    tooltip:{trigger:'item',triggerOn:'click',renderMode:'richText',confine:true},
+    animation:false,
+    series:[{
+      type:'graph',layout:'none',roam:true,draggable:true,
+      label:{show:true,fontSize:10},
+      data:nodes,edges
+    }]
+  });
+  STATE.charts.graph.off('click');
+  STATE.charts.graph.on('click',function(p){
+    if(p.dataType==='node'&&p.data&&p.data.id){location.hash='#/item?id='+p.data.id;}
+  });
+}
+
+/* ---------- 详情 ---------- */
+function renderItemDetail(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const isNew=!it;
+  const d=isNew?{name:'',category:'数码',purchaseDate:fmtDate(today()),purchasePrice:'',lifespanYears:3,salvageRate:0.10,warrantyMonths:12,notes:'',extras:STATE.pendingExtras,links:STATE.pendingLinks}:it;
+  const imgKey=isNew?STATE.pendingImage:(it?it.imageKey:null);
+  const firstChar=esc((d.name||'?').charAt(0));
+  const linkRows=linkListHTML();
+  const linkOptions=linkTargetOptionsHTML();
+  const freqOptsHTML='<option value="">未设置</option>'+FREQ_OPTS.map(o=>`<option value="${o.v}" ${d.frequency===o.v?'selected':''}>${o.label}</option>`).join('');
+  const exRows=extraListHTML();
+  let statusHTML;
+  if(isNew){statusHTML='<div class="status-box"><span style="font-size:13px;color:var(--sub)">保存后可在下方登记退役 / 卖出回血。</span></div>';}
+  else if(d.status==='active'){
+    const als=alertsOf(d).map(a=>`<span class="alert-tag ${a.level}"><i class="dot"></i>${esc(a.text)}</span>`).join('');
+    statusHTML=`<div class="status-box">
+      <div style="font-size:13px;color:var(--sub);margin-bottom:8px">状态：在役${als?'　'+als:''}</div>
+      <div class="row">
+        <div class="field"><label>退役 / 卖出日期</label><input type="date" id="ret-date" value="${fmtDate(today())}"></div>
+        <div class="field"><label>二手回血价（无则填 0）</label><input type="number" id="ret-price" placeholder="0" min="0" step="1"></div>
+        <button class="btn" data-action="retire-item">登记退役 / 卖出</button>
+      </div></div>`;
+  }else{
+    statusHTML=`<div class="status-box">
+      <div style="font-size:13px;color:var(--sub);margin-bottom:8px">状态：已退役（${esc(d.retireDate||'')}） · 回血 ${fmtMoney(d.salePrice||0)}</div>
+      <button class="btn ghost" data-action="reopen-item">恢复为在役</button></div>`;
+  }
+  const kpis=isNew?'':`
+  <div class="kpi-grid">
+    <div class="kpi"><div class="l">总投入（含附加）</div><div class="v num">${fmtMoney(totalCost(d))}</div></div>
+    <div class="kpi"><div class="l">持有天数</div><div class="v num">${holdingDays(d)} 天</div></div>
+    <div class="kpi"><div class="l">日均 / 次均成本</div><div class="v num">${fmtMoney1(dailyCost(d))}<small> 元/天</small></div><div class="v num" style="font-size:13px;margin-top:3px">≈ ${perUseCost(d)!=null?fmtMoney1(perUseCost(d)):'—'}<small> 元/次</small></div></div>
+    <div class="kpi"><div class="l">${d.status==='active'?'当前残值 · 折旧法':'回血价'}</div><div class="v num">${fmtMoney(d.status==='active'?residualValue(d):(d.salePrice||0))}</div></div>
+  </div>`;
+  const depHTML=isNew?'':`
+  <div class="panel" style="margin-top:14px">
+    <h3>折旧进度 · 双倍余额递减</h3>
+    <div style="font-size:12px;color:var(--sub);margin-bottom:6px">已折旧 ${fmtMoney(depreciatedAmt(d))}（占买入价 ${Math.round(depProgress(d)*100)}%）· 年折旧 ${fmtMoney(annualDep(d))} · 残值下限 ${fmtMoney((+d.purchasePrice||0)*(+d.salvageRate||0))}</div>
+    <div class="dep-bar"><i style="width:${Math.round(depProgress(d)*100)}%"></i></div>
+    <div id="chart-residual" class="chart-box" style="height:240px;margin-top:10px"></div>
+  </div>`;
+  document.getElementById('view-item').innerHTML=`
+    <div class="back" data-action="back">← 返回</div>
+    <div class="detail-head">
+      <h1>${isNew?'新增物品':esc(d.name)}</h1>
+      <div class="cats">${isNew?'':`<span class="tag ${d.status==='retired'?'retired':''}">${d.status==='retired'?'已退役':'在役'}</span>`}${isNew?'':'<span class="tag">'+esc(d.category)+'</span>'}</div>
+    </div>
+    ${kpis}${depHTML}
+    <div class="panel" style="margin-top:14px" id="img-panel">
+      <h3>物品图片</h3>
+      <div class="img-box">
+        <div class="img-preview" id="img-preview" data-action="pick-image">${firstChar}</div>
+        <div class="img-actions">
+          <button class="btn ghost" data-action="pick-image">上传 / 更换图片</button>
+          ${imgKey?'<button class="btn ghost" data-action="remove-image">移除图片</button>':''}
+          <span class="hint">支持 JPG / PNG，上传后自动压缩保存，建议手机实拍图</span>
+        </div>
+        <input type="file" id="img-file" accept="image/*" class="hidden">
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>基本信息</h3>
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1"><label>物品名称 *</label><input id="f-name" value="${esc(d.name)}" placeholder="如：iPhone 15 Pro"></div>
+        <div class="field"><label>分类</label><select id="f-cat">${CATS.map(c=>`<option ${d.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="field"><label>子分类（可选）</label><input type="text" id="f-sub" placeholder="如：手机 / 外设 / 相机" value="${esc(d.sub||'')}"></div>
+        <div class="field"><label>购买日期 *</label><input type="date" id="f-date" value="${d.purchaseDate}"></div>
+        <div class="field"><label>购买价格（元）*</label><input type="number" id="f-price" value="${d.purchasePrice}" min="0" step="1"></div>
+        <div class="field"><label>预期寿命（年）</label><input type="number" id="f-life" value="${d.lifespanYears}" min="1" step="1"></div>
+        <div class="field"><label>残值率（%）</label><input type="number" id="f-salvage" value="${d.salvageRate*100}" min="0" max="100" step="1"></div>
+        <div class="field"><label>保修期（月，0=无）</label><input type="number" id="f-warranty" value="${d.warrantyMonths}" min="0" step="1"></div>
+        <div class="field"><label>使用频率</label><select id="f-freq">${freqOptsHTML}</select></div>
+        <div class="field" style="grid-column:1/-1"><label>备注</label><textarea id="f-notes" placeholder="使用场景、购买渠道…">${esc(d.notes)}</textarea></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>附加成本（维修 / 配件 / 保养）</h3>
+      <div class="extra-list">${exRows}</div>
+      <div class="extra-row" style="margin-top:10px;background:#fff">
+        <input type="date" id="ex-date" value="${fmtDate(today())}">
+        <input type="text" id="ex-name" placeholder="名称，如换电池" style="border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+        <input type="number" id="ex-amount" placeholder="金额" min="0" style="border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%">
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-action="add-extra">添加</button>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h3>关联物品</h3>
+      <div class="link-list">${linkRows}</div>
+      <div class="link-row" style="margin-top:10px;background:#fff;flex-wrap:wrap">
+        <select id="link-target" style="border:1px solid var(--line);border-radius:6px;padding:6px 8px;flex:1;min-width:140px">
+          <option value="">选择要关联的物品…</option>
+          ${linkOptions}
+        </select>
+        <select id="link-weight" style="border:1px solid var(--line);border-radius:6px;padding:6px 8px">
+          <option value="1">普通关联</option>
+          <option value="2">紧密关联</option>
+        </select>
+        <button class="btn ghost" style="padding:6px 12px;font-size:12px" data-action="add-link">添加关联</button>
+      </div>
+      <div style="font-size:11px;color:var(--sub);margin-top:6px">关联是双向的；同分类物品在网状图中会自动靠得更近。</div>
+    </div>
+    ${statusHTML}
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn" data-action="save-item">${isNew?'保存并加入清单':'保存修改'}</button>
+      ${isNew?'':'<button class="btn danger" data-action="del-item">删除物品</button>'}
+    </div>`;
+  if(!isNew)renderResidualChart(d);
+  if(imgKey){imgLoad(imgKey).then(function(data){if(!data)return;var el=document.getElementById('img-preview');if(el){el.style.backgroundImage='url("'+data+'")';el.textContent='';}});}
+}
+function renderResidualChart(it){
+  const pts=residualTimeline(it);
+  const todayFmt=fmtDate(today());
+  const nowIdx=pts.findIndex(p=>p[0]>=todayFmt);
+  if(!STATE.charts.residual)STATE.charts.residual=echarts.init(document.getElementById('chart-residual'));
+  STATE.charts.residual.setOption({
+    tooltip:{trigger:'axis',triggerOn:'click',renderMode:'richText',confine:true,valueFormatter:v=>fmtMoney(v)},
+    grid:{left:46,right:14,top:28,bottom:26,containLabel:true},
+    xAxis:{type:'category',data:pts.map(p=>p[0]),axisLabel:{fontSize:10,color:'#9AA39B'}},
+    yAxis:{type:'value',axisLabel:{fontSize:10,color:'#9AA39B',formatter:v=>'¥'+Math.round(v/1000)+'k'},splitLine:{lineStyle:{color:'#EDF0E9'}}},
+    series:[{
+      name:'残值',type:'line',data:pts.map(p=>p[1]),smooth:true,symbolSize:5,
+      lineStyle:{color:'#2F6B4F',width:2.5},itemStyle:{color:'#2F6B4F'},
+      areaStyle:{color:'rgba(47,107,79,.08)'},
+      markLine:{symbol:'none',label:{formatter:'今天',fontSize:10,color:'#C0552E'},lineStyle:{color:'#C0552E',type:'dashed'},data:[nowIdx>=0?{xAxis:pts[nowIdx][0]}:{xAxis:pts[pts.length-1][0]}]}
+    }]
+  });
+}
+
+/* ---------- 数据管理 ---------- */
+function renderData(){
+  const s=summary();
+  const cats=new Set(STATE.items.map(i=>i.category));
+  document.getElementById('view-data').innerHTML=`
+  <div class="section-title"><h2>数据管理</h2><span class="note">${STATE.items.length} 件物品 · ${cats.size} 个分类 · ${s.active} 件在役</span></div>
+  <div class="data-grid">
+    <div class="data-card" style="border-color:var(--gold);background:#FFFDF6">
+      <h3>数据文件绑定</h3>
+      <p id="file-bound">未绑定。绑定后所有修改自动保存到所选 JSON 文件——页面更新、换设备、清浏览器缓存都不会丢数据。</p>
+      <div class="btns"><button class="btn" data-action="bind-file">选择数据文件并绑定</button><button class="btn ghost hidden" id="unbind-btn" data-action="unbind-file">解除绑定</button></div>
+    </div>
+    <div class="data-card"><h3>导出备份</h3><p>下载全部数据为 JSON 文件（含物品图片），可存到网盘或换设备时导入。</p><div class="btns"><button class="btn ghost" data-action="export-data">导出 JSON</button></div></div>
+    <div class="data-card"><h3>导入数据</h3><p>选择之前导出的 JSON 文件（含图片），将<strong>替换</strong>当前全部数据。</p><div class="btns"><button class="btn ghost" data-action="import-data">选择文件导入</button><input type="file" id="import-file" accept=".json,application/json" class="hidden"></div></div>
+    <div class="data-card"><h3>载入示例</h3><p>用 10 件示例物品（数码 / 家电 / 服饰 / 收藏等）体验看板，会替换当前数据。</p><div class="btns"><button class="btn ghost" data-action="load-sample">载入示例数据</button></div></div>
+    <div class="data-card"><h3>清空数据</h3><p>删除本机浏览器中保存的全部物品记录，操作不可恢复。</p><div class="btns"><button class="btn danger" data-action="clear-all">清空全部数据</button></div></div>
+  </div>
+  <div class="formula"><h3>计算口径说明</h3>    <ul>
+      <li><b>摊薄法 · 日均持有成本</b>：<code>(购买价 + 附加成本 − 二手回血) ÷ 持有天数</code>，回答"这物件每天花了我多少钱"；在役物品持有天数截至今天，退役物品截至退役日。</li>
+      <li><b>折旧法 · 双倍余额递减（先快后缓）</b>：当前残值 = <code>购买价 × (1 − 2 ÷ 预期寿命年) ^ 持有年数</code>，且不低于 <code>购买价 × 残值率</code>；残值趋势曲线即按此绘制（新物件贬值快、随时间趋缓）。"年折旧"显示第一年折旧额 <code>购买价 × 2 ÷ 预期寿命年</code>。</li>
+      <li><b>次均使用成本（估算）</b>：<code>(购买价 + 附加成本 − 二手回血) ÷ (持有天数 × 频率系数)</code>。频率在物品详情中设置（每天 / 每周几次 / 每月几次…），系数按档位折算为"每天约使用次数"；未设置频率则不估算。</li>
+      <li><b>已折旧</b>：在役物品按折旧法计算；已退役物品按 <code>总投入 − 回血</code>（钱已经花掉的）计入。</li>
+      <li><b>提醒</b>：剩余寿命 ≤ 90 天或保修 ≤ 30 天 → 橙色"将到期"；已超过 → 红色"超期"。</li>
+      <li>数据保存在浏览器 IndexedDB（并同步到 localStorage）；强烈建议在「数据文件绑定」中绑定一个 JSON 文件，此后每次修改自动写入文件，页面更新、清缓存、换设备都不丢数据。</li>
+    </ul>
+  </div>`;
+  idbDataGet('fileHandle').then(function(h){
+    const el=document.getElementById('file-bound'),ub=document.getElementById('unbind-btn');
+    if(h&&h.name){if(el)el.textContent='已绑定：'+h.name+'。每次修改自动写入该文件，请勿删除。';if(ub)ub.classList.remove('hidden');}
+  });
+}
+
+/* ---------- 事件委托 ---------- */
+document.addEventListener('click',function(e){
+  const el=e.target.closest('[data-action]');
+  const act=el?el.dataset.action:null;
+  if(act==='ctx-edit'||act==='ctx-delete'){
+    const id=STATE.ctxId;hideCtx();
+    if(act==='ctx-edit'&&id){location.hash='#/item?id='+id;}
+    if(act==='ctx-delete'&&id){deleteById(id);}
+    return;
+  }
+  if(e.target.closest&&e.target.closest('#ctx-menu')){hideCtx();return;}
+  if(Date.now()<STATE.suppressClick){return;}
+  hideCtx();
+  if(!el)return;
+  if(act==='nav'){go(el.dataset.view);return;}
+  if(act==='open-item'){if(STATE.batchMode){toggleSelect(el.dataset.id);}else{location.hash='#/item?id='+el.dataset.id;}return;}
+  if(act==='back'){history.length>1?history.back():go('dashboard');return;}
+  if(act==='add-item'){location.hash='#/item';return;}
+  if(act==='toggle-view'){STATE.viewMode=el.dataset.mode;try{localStorage.setItem('worthit-view',STATE.viewMode);}catch(err){}renderItems();return;}
+  if(act==='batch-mode'){STATE.batchMode=!STATE.batchMode;STATE.selected.clear();renderItems();return;}
+  if(act==='toggle-select'){toggleSelect(el.dataset.id);return;}
+  if(act==='select-all'){selectAllToggle();return;}
+  if(act==='batch-delete'){batchDelete();return;}
+  if(act==='chip'){STATE.filter.cat=el.dataset.cat;renderItems();return;}
+  if(act==='status-chip'){STATE.filter.status=el.dataset.status;renderItems();return;}
+  if(act==='save-item'){saveItem();return;}
+  if(act==='del-item'){deleteItem();return;}
+  if(act==='add-extra'){addExtra();return;}
+  if(act==='del-extra'){delExtra(el.dataset.ex);return;}
+  if(act==='add-link'){addLink();return;}
+  if(act==='del-link'){delLink(el.dataset.id);return;}
+  if(act==='pick-image'){const f=document.getElementById('img-file');if(f)f.click();return;}
+  if(act==='remove-image'){removeImage();return;}
+  if(act==='retire-item'){retireItem();return;}
+  if(act==='reopen-item'){reopenItem();return;}
+  if(act==='export-data'){exportData();return;}
+  if(act==='import-data'){document.getElementById('import-file').click();return;}
+  if(act==='load-sample'){if(confirm('载入示例将替换当前全部数据，确定吗？')){STATE.items=sampleItems();save();toast('已载入示例数据');route();}return;}
+  if(act==='clear-all'){if(confirm('确认清空全部物品数据？此操作不可恢复。')){STATE.items=[];save();toast('已清空');route();}return;}
+  if(act==='bind-file'){bindDataFile();return;}
+  if(act==='unbind-file'){unbindDataFile();return;}
+});
+document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='import-file'){importData(e.target);}
+  if(e.target&&e.target.id==='img-file'){handleImageFile(e.target);}
+  if(e.target&&e.target.id==='sort-select'){STATE.sort=e.target.value;try{localStorage.setItem('worthit-sort',STATE.sort);}catch(err){}renderItems();}
+});
+
+/* ---------- 右键 / 长按菜单 ---------- */
+var _touchTimer=null,_touchStart={x:0,y:0,id:null};
+function hideCtx(){var m=document.getElementById('ctx-menu');if(m)m.classList.add('hidden');STATE.ctxId=null;}
+function openCtxMenu(id,x,y){
+  var m=document.getElementById('ctx-menu');if(!m)return;
+  m.classList.remove('hidden');
+  var w=m.offsetWidth,h=m.offsetHeight;
+  var px=Math.min(x,window.innerWidth-w-8),py=Math.min(y,window.innerHeight-h-8);
+  if(px<8)px=8;if(py<8)py=8;
+  m.style.left=px+'px';m.style.top=py+'px';
+  STATE.ctxId=id;
+}
+document.addEventListener('contextmenu',function(e){
+  var row=e.target.closest?e.target.closest('[data-ctx]'):null;
+  if(!row)return;
+  e.preventDefault();
+  openCtxMenu(row.dataset.ctx,e.clientX,e.clientY);
+});
+document.addEventListener('touchstart',function(e){
+  var t=e.changedTouches&&e.changedTouches[0];if(!t)return;
+  var row=e.target.closest?e.target.closest('[data-ctx]'):null;
+  if(!row)return;
+  _touchStart={x:t.clientX,y:t.clientY,id:row.dataset.ctx};
+  _touchTimer=setTimeout(function(){
+    if(_touchStart.id){
+      if(navigator.vibrate)navigator.vibrate(25);
+      openCtxMenu(_touchStart.id,_touchStart.x,_touchStart.y);
+      STATE.suppressClick=Date.now()+900;
+      _touchStart.id=null;
+    }
+  },550);
+},{passive:true});
+document.addEventListener('touchmove',function(){if(_touchTimer){clearTimeout(_touchTimer);_touchTimer=null;_touchStart.id=null;}},{passive:true});
+document.addEventListener('touchend',function(){if(_touchTimer){clearTimeout(_touchTimer);_touchTimer=null;}});
+window.addEventListener('scroll',function(){hideCtx();},true);
+
+/* ---------- 多选 / 删除 ---------- */
+function toggleSelect(id){
+  if(STATE.selected.has(id))STATE.selected.delete(id);else STATE.selected.add(id);
+  renderItems();
+}
+function selectAllToggle(){
+  if(STATE.filteredIds.length&&STATE.selected.size===STATE.filteredIds.length){STATE.selected.clear();}
+  else{STATE.filteredIds.forEach(id=>STATE.selected.add(id));}
+  renderItems();
+}
+function cleanupLinks(ids){
+  const set=new Set(ids);
+  STATE.items.forEach(function(it){
+    if(it.links&&it.links.length)it.links=it.links.filter(l=>!set.has(l.id));
+  });
+}
+function batchDelete(){
+  const n=STATE.selected.size;if(!n)return;
+  if(!confirm('确定删除选中的 '+n+' 件物品？删除后不可恢复。'))return;
+  STATE.selected.forEach(id=>{const it=STATE.items.find(i=>i.id===id);if(it&&it.imageKey)imgDel(it.imageKey);});
+  STATE.items=STATE.items.filter(i=>!STATE.selected.has(i.id));
+  cleanupLinks(Array.from(STATE.selected));
+  STATE.selected.clear();save();toast('已删除 '+n+' 件物品');renderItems();
+}
+function deleteById(id){
+  const it=STATE.items.find(i=>i.id===id);if(!it)return;
+  if(!confirm('确认删除「'+it.name+'」？删除后不可恢复。'))return;
+  if(it.imageKey)imgDel(it.imageKey);
+  STATE.items=STATE.items.filter(i=>i.id!==id);
+  cleanupLinks([id]);
+  if(STATE.itemId===id)STATE.itemId=null;
+  save();toast('已删除');
+  if(location.hash.indexOf('#/item')===0){go('items');}else{route();}
+}
+function val(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function removeImage(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const key=it?(it.imageKey||null):STATE.pendingImage;
+  if(!key)return;
+  if(it){imgDel(key);it.imageKey=null;save();}else{STATE.pendingImage=null;imgDel(key);}
+  toast('已移除图片');updateImagePanel(null,null);
+}
+function updateImagePanel(key,dataURL){
+  const panel=document.getElementById('img-panel');
+  if(!panel)return;
+  const prev=document.getElementById('img-preview');
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const firstChar=esc(((it&&it.name)||(val('f-name'))||'?').charAt(0));
+  if(prev){
+    if(dataURL){prev.style.backgroundImage='url("'+dataURL+'")';prev.textContent='';}
+    else{prev.style.backgroundImage='';prev.textContent=firstChar;}
+  }
+  const actions=panel.querySelector('.img-actions');
+  if(!actions)return;
+  const rm=panel.querySelector('[data-action="remove-image"]');
+  if(key&&!rm){
+    const b=document.createElement('button');
+    b.className='btn ghost';b.setAttribute('data-action','remove-image');b.textContent='移除图片';
+    actions.insertBefore(b,actions.querySelector('.hint')||null);
+  }else if(!key&&rm){rm.remove();}
+}
+function handleImageFile(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  if(!/^image\//.test(f.type)){toast('请选择 JPG / PNG 等图片文件');input.value='';return;}
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  compressImage(f,600).then(function(dataURL){
+    const key='im'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    imgSave(key,dataURL).then(function(){
+      if(it){const old=it.imageKey;it.imageKey=key;save();if(old&&old!==key)imgDel(old);}
+      else{STATE.pendingImage=key;}
+      toast('图片已保存');updateImagePanel(key,dataURL);
+    });
+  }).catch(function(){toast('图片处理失败，请换一张试试');});
+  input.value='';
+}
+function saveItem(){
+  const name=val('f-name'),date=val('f-date'),price=val('f-price');
+  if(!name){toast('请填写物品名称');return;}
+  if(!date){toast('请填写购买日期');return;}
+  const idx=STATE.items.findIndex(i=>i.id===STATE.itemId);
+  const data={name,category:val('f-cat')||'其他',sub:(val('f-sub')||'').trim(),purchaseDate:date,purchasePrice:+price||0,
+    lifespanYears:+val('f-life')||1,salvageRate:(+val('f-salvage')||0)/100,warrantyMonths:+val('f-warranty')||0,
+    frequency:val('f-freq'),
+    notes:val('f-notes'),extras:idx>=0?STATE.items[idx].extras:STATE.pendingExtras,
+    imageKey:idx>=0?(STATE.items[idx].imageKey||null):(STATE.pendingImage||null),
+    status:'active',retireDate:null,salePrice:null};
+  if(idx>=0){STATE.items[idx]=Object.assign({},STATE.items[idx],data);toast('已保存修改');}
+  else{
+    data.id=uid();data.links=STATE.pendingLinks;
+    STATE.items.push(data);
+    data.links.forEach(function(l){const t=STATE.items.find(i=>i.id===l.id);if(t){t.links=t.links||[];if(!t.links.some(x=>x.id===data.id))t.links.push({id:data.id,weight:l.weight});}});
+    STATE.itemId=data.id;STATE.pendingImage=null;STATE.pendingExtras=[];STATE.pendingLinks=[];
+    toast('已加入清单');
+  }
+  save();route();
+}
+function extraListHTML(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const list=it?it.extras:STATE.pendingExtras;
+  return (list||[]).map(e=>`<div class="extra-row"><span>${esc(e.date)}</span><span>${esc(e.name)}</span><span class="num">${fmtMoney(e.amount)}</span><span class="del" data-action="del-extra" data-ex="${e.id}">删除</span></div>`).join('')||'<div style="color:var(--sub);font-size:12px">暂无附加成本</div>';
+}
+function linkListHTML(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const d=it||{links:STATE.pendingLinks};
+  return (d.links||[]).map(l=>{const t=STATE.items.find(i=>i.id===l.id);return t?`<div class="link-row"><span style="font-weight:600">${esc(t.name)}</span><span class="link-tag ${(+l.weight||1)>=2?'tight':''}">${(+l.weight||1)>=2?'紧密':'普通'}</span><span class="del" data-action="del-link" data-id="${l.id}">删除</span></div>`:'';}).join('')||'<div style="color:var(--sub);font-size:12px">暂无手动关联，可在下方添加</div>';
+}
+function linkTargetOptionsHTML(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  const d=it||{links:STATE.pendingLinks};
+  return STATE.items.filter(i=>i.id!==(it?it.id:null)&&!((d.links||[]).some(l=>l.id===i.id))).map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('');
+}
+function refreshSections(){
+  const ex=document.querySelector('.extra-list');if(ex)ex.innerHTML=extraListHTML();
+  const lk=document.querySelector('.link-list');if(lk)lk.innerHTML=linkListHTML();
+  const sel=document.getElementById('link-target');
+  if(sel){sel.innerHTML='<option value="">选择要关联的物品…</option>'+linkTargetOptionsHTML();}
+}
+function addExtra(){
+  const date=val('ex-date'),name=val('ex-name'),amount=val('ex-amount');
+  if(!name||!amount){toast('请填写名称和金额');return;}
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  if(it){it.extras.push({id:'ex'+Date.now().toString(36),date,name,amount:+amount||0});save();}
+  else{STATE.pendingExtras.push({id:'ex'+Date.now().toString(36),date,name,amount:+amount||0});}
+  refreshSections();
+}
+function delExtra(exId){
+  if(!confirm('删除这条附加成本记录？'))return;
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  if(it){it.extras=it.extras.filter(e=>e.id!==exId);save();}
+  else{STATE.pendingExtras=STATE.pendingExtras.filter(e=>e.id!==exId);}
+  refreshSections();
+}
+function addLink(){
+  const targetId=val('link-target');const weight=+val('link-weight')||1;
+  if(!targetId){toast('请选择要关联的物品');return;}
+  const t=STATE.items.find(i=>i.id===targetId);if(!t)return;
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  if(it){
+    it.links=it.links||[];if(!it.links.some(l=>l.id===targetId))it.links.push({id:targetId,weight});
+    t.links=t.links||[];if(!t.links.some(l=>l.id===it.id))t.links.push({id:it.id,weight});
+    save();
+  }else{
+    if(!STATE.pendingLinks.some(l=>l.id===targetId))STATE.pendingLinks.push({id:targetId,weight});
+  }
+  toast('已关联「'+t.name+'」');refreshSections();
+}
+function delLink(targetId){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);
+  if(it){
+    const t=STATE.items.find(i=>i.id===targetId);
+    it.links=(it.links||[]).filter(l=>l.id!==targetId);
+    if(t)t.links=(t.links||[]).filter(l=>l.id!==it.id);
+    save();
+  }else{
+    STATE.pendingLinks=STATE.pendingLinks.filter(l=>l.id!==targetId);
+  }
+  refreshSections();
+}
+function retireItem(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);if(!it)return;
+  const date=val('ret-date'),price=+val('ret-price')||0;
+  it.status='retired';it.retireDate=date||fmtDate(today());it.salePrice=price;
+  save();toast(price>0?'已登记退役，回血 '+fmtMoney(price):'已登记退役');renderItemDetail();
+}
+function reopenItem(){
+  const it=STATE.items.find(i=>i.id===STATE.itemId);if(!it)return;
+  it.status='active';it.retireDate=null;it.salePrice=null;
+  save();toast('已恢复在役');renderItemDetail();
+}
+function deleteItem(){if(STATE.itemId){deleteById(STATE.itemId);}}
+function exportData(){
+  const keys=STATE.items.map(i=>i.imageKey).filter(Boolean);
+  const finish=function(images){
+    const blob=new Blob([JSON.stringify({app:'worthit-dashboard',v:2,exportedAt:fmtDate(today()),items:STATE.items,images:images},null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='worthit-consumption-'+fmtDate(today())+'.json';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    toast('已导出 JSON'+(keys.length?'（含 '+keys.length+' 张图片）':''));
+  };
+  Promise.all(keys.map(k=>imgLoad(k))).then(function(datas){
+    const images={};keys.forEach((k,i)=>{if(datas[i])images[k]=datas[i];});
+    finish(images);
+  }).catch(function(){finish({});});
+}
+function importData(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const d=JSON.parse(reader.result);
+      const items=Array.isArray(d)?d:(d.items||[]);
+      if(!items.every(x=>x.name&&x.purchaseDate))throw new Error('bad');
+      const images=d.images||{};
+      const keys=Object.keys(images);
+      const apply=function(okImg){STATE.items=items;save();toast('已导入 '+items.length+' 件物品'+(okImg&&keys.length?'（含 '+keys.length+' 张图片）':''));route();};
+      if(keys.length){
+        Promise.all(keys.map(k=>imgSave(k,images[k]))).then(function(){apply(true);}).catch(function(){apply(false);toast('已导入数据，但部分图片恢复失败');});
+      }else{apply(false);}
+    }catch(err){toast('导入失败：文件格式不正确');}
+    input.value='';
+  };
+  reader.readAsText(f);
+}
+window.addEventListener('resize',function(){Object.keys(STATE.charts).forEach(k=>STATE.charts[k]&&STATE.charts[k].resize());});
+
+/* ---------- 启动 ---------- */
+loadAll();
+window.addEventListener('hashchange',route);
+
+</script>
+</body>
+</html>
