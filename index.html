@@ -810,7 +810,7 @@ function renderGraphChart(list){
 function renderItemDetail(){
   const it=STATE.items.find(i=>i.id===STATE.itemId);
   const isNew=!it;
-  const d=isNew?{name:'',category:'数码',purchaseDate:fmtDate(today()),lifespanYears:3,salvageRate:0.10,warrantyMonths:12,notes:'',extras:STATE.pendingExtras,links:STATE.pendingLinks}:it;
+  const d=isNew?{name:'',category:'数码',purchaseDate:fmtDate(today()),purchasePrice:'',lifespanYears:3,salvageRate:0.10,warrantyMonths:12,notes:'',extras:STATE.pendingExtras,links:STATE.pendingLinks}:it;
   const imgKey=isNew?STATE.pendingImage:(it?it.imageKey:null);
   const firstChar=esc((d.name||'?').charAt(0));
   const linkRows=linkListHTML();
