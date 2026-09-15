@@ -388,6 +388,7 @@ function loadAll(){
   }).catch(function(){}).then(function(){
     if(!STATE.items.length){STATE.items=sampleItems();save();}
     route();
+    maybeAutoPull();
   });
 }
 function supportsFSA(){return typeof window.showSaveFilePicker==='function';}
@@ -839,9 +840,27 @@ function renderResidualChart(it){
 function renderData(){
   const s=summary();
   const cats=new Set(STATE.items.map(i=>i.category));
+  const gc=ghConfig();
   document.getElementById('view-data').innerHTML=`
   <div class="section-title"><h2>数据管理</h2><span class="note">${STATE.items.length} 件物品 · ${cats.size} 个分类 · ${s.active} 件在役</span></div>
   <div class="data-grid">
+    <div class="data-card" style="border-color:var(--info);background:#F2F7FB">
+      <h3>GitHub 云同步（手机 ⇄ 电脑）</h3>
+      <p>把数据存到 GitHub 仓库的 <code>worthit-data.json</code>：在这台设备点"推送"，另一台设备点"拉取"即可同步，含物品图片。支持打开页面时自动拉取。</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
+        <input type="text" id="gh-owner" placeholder="GitHub 用户名（如 AlexZChoy）" value="${gc?esc(gc.owner):''}">
+        <input type="text" id="gh-repo" placeholder="仓库名（如 WorthIt）" value="${gc?esc(gc.repo):''}">
+        <input type="password" id="gh-token" placeholder="Personal Access Token（仓库读写权限）" value="${gc?esc(gc.token):''}">
+      </div>
+      <div class="btns">
+        <button class="btn" data-action="gh-save">保存配置</button>
+        <button class="btn ghost" data-action="gh-pull">拉取云端 → 本机</button>
+        <button class="btn ghost" data-action="gh-push">推送本机 → 云端</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;cursor:pointer"><input type="checkbox" id="gh-autopull" ${gc&&gc.autoPull?'checked':''} style="accent-color:var(--info)"> 打开页面时自动从云端拉取（会覆盖本机数据）</label>
+      <div style="font-size:11px;color:var(--sub);margin-top:8px" id="gh-status">${gc?(gc.syncedAt?'上次同步：'+new Date(gc.syncedAt).toLocaleString('zh-CN'):'配置已保存，尚未同步'):'未配置'}</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:4px;line-height:1.5">Token 获取：GitHub → Settings → Developer settings → Personal access tokens → Generate（勾选该仓库 Contents 读写权限）。Token 仅保存在本机浏览器，请勿泄露；数据文件位于该仓库 <code>worthit-data.json</code>。</div>
+    </div>
     <div class="data-card" style="border-color:var(--gold);background:#FFFDF6">
       <h3>数据文件绑定</h3>
       <p id="file-bound">未绑定。绑定后所有修改自动保存到所选 JSON 文件——页面更新、换设备、清浏览器缓存都不会丢数据。</p>
@@ -858,7 +877,7 @@ function renderData(){
       <li><b>次均使用成本（估算）</b>：<code>(购买价 + 附加成本 − 二手回血) ÷ (持有天数 × 频率系数)</code>。频率在物品详情中设置（每天 / 每周几次 / 每月几次…），系数按档位折算为"每天约使用次数"；未设置频率则不估算。</li>
       <li><b>已折旧</b>：在役物品按折旧法计算；已退役物品按 <code>总投入 − 回血</code>（钱已经花掉的）计入。</li>
       <li><b>提醒</b>：剩余寿命 ≤ 90 天或保修 ≤ 30 天 → 橙色"将到期"；已超过 → 红色"超期"。</li>
-      <li>数据保存在浏览器 IndexedDB（并同步到 localStorage）；强烈建议在「数据文件绑定」中绑定一个 JSON 文件，此后每次修改自动写入文件，页面更新、清缓存、换设备都不丢数据。</li>
+      <li>数据保存在浏览器 IndexedDB（并同步到 localStorage）；建议在「数据文件绑定」中绑定一个 JSON 文件自动写入，或用「GitHub 云同步」在手机与电脑间双向同步。</li>
     </ul>
   </div>`;
   idbDataGet('fileHandle').then(function(h){
@@ -908,8 +927,12 @@ document.addEventListener('click',function(e){
   if(act==='clear-all'){if(confirm('确认清空全部物品数据？此操作不可恢复。')){STATE.items=[];save();toast('已清空');route();}return;}
   if(act==='bind-file'){bindDataFile();return;}
   if(act==='unbind-file'){unbindDataFile();return;}
+  if(act==='gh-save'){ghSave();return;}
+  if(act==='gh-pull'){pullFromGithub();return;}
+  if(act==='gh-push'){pushToGithub();return;}
 });
 document.addEventListener('change',function(e){
+  if(e.target&&e.target.id==='gh-autopull'){ghUpdateConfig({autoPull:e.target.checked});toast(e.target.checked?'已开启自动拉取':'已关闭自动拉取');}
   if(e.target&&e.target.id==='import-file'){importData(e.target);}
   if(e.target&&e.target.id==='img-file'){handleImageFile(e.target);}
   if(e.target&&e.target.id==='sort-select'){STATE.sort=e.target.value;try{localStorage.setItem('worthit-sort',STATE.sort);}catch(err){}renderItems();}
@@ -1121,37 +1144,113 @@ function reopenItem(){
   save();toast('已恢复在役');renderItemDetail();
 }
 function deleteItem(){if(STATE.itemId){deleteById(STATE.itemId);}}
-function exportData(){
+function buildExportPayload(){
   const keys=STATE.items.map(i=>i.imageKey).filter(Boolean);
-  const finish=function(images){
-    const blob=new Blob([JSON.stringify({app:'worthit-dashboard',v:2,exportedAt:fmtDate(today()),items:STATE.items,images:images},null,2)],{type:'application/json'});
+  return Promise.all(keys.map(k=>imgLoad(k))).then(function(datas){
+    const images={};keys.forEach((k,i)=>{if(datas[i])images[k]=datas[i];});
+    return {app:'worthit-dashboard',v:2,exportedAt:fmtDate(today()),items:STATE.items,images};
+  }).catch(function(){return {app:'worthit-dashboard',v:2,exportedAt:fmtDate(today()),items:STATE.items,images:{}};});
+}
+function exportData(){
+  buildExportPayload().then(function(payload){
+    const keys=Object.keys(payload.images);
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='worthit-consumption-'+fmtDate(today())+'.json';
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
     toast('已导出 JSON'+(keys.length?'（含 '+keys.length+' 张图片）':''));
-  };
-  Promise.all(keys.map(k=>imgLoad(k))).then(function(datas){
-    const images={};keys.forEach((k,i)=>{if(datas[i])images[k]=datas[i];});
-    finish(images);
-  }).catch(function(){finish({});});
+  });
+}
+function applyImportedData(d,after){
+  try{
+    const items=Array.isArray(d)?d:(d.items||[]);
+    if(!items.every(x=>x.name&&x.purchaseDate))throw new Error('bad');
+    const images=d.images||{};
+    const keys=Object.keys(images);
+    const apply=function(okImg){STATE.items=items;save();if(after)after(okImg,items.length,keys.length);};
+    if(keys.length){
+      Promise.all(keys.map(k=>imgSave(k,images[k]))).then(function(){apply(true);}).catch(function(){apply(false);});
+    }else{apply(false);}
+    return true;
+  }catch(err){return false;}
 }
 function importData(input){
   const f=input.files&&input.files[0];if(!f)return;
   const reader=new FileReader();
   reader.onload=function(){
-    try{
-      const d=JSON.parse(reader.result);
-      const items=Array.isArray(d)?d:(d.items||[]);
-      if(!items.every(x=>x.name&&x.purchaseDate))throw new Error('bad');
-      const images=d.images||{};
-      const keys=Object.keys(images);
-      const apply=function(okImg){STATE.items=items;save();toast('已导入 '+items.length+' 件物品'+(okImg&&keys.length?'（含 '+keys.length+' 张图片）':''));route();};
-      if(keys.length){
-        Promise.all(keys.map(k=>imgSave(k,images[k]))).then(function(){apply(true);}).catch(function(){apply(false);toast('已导入数据，但部分图片恢复失败');});
-      }else{apply(false);}
-    }catch(err){toast('导入失败：文件格式不正确');}
+    let d;try{d=JSON.parse(reader.result);}catch(err){toast('导入失败：文件格式不正确');input.value='';return;}
+    const ok=applyImportedData(d,function(okImg,n,imgN){
+      toast('已导入 '+n+' 件物品'+(okImg&&imgN?'（含 '+imgN+' 张图片）':''));route();
+    });
+    if(!ok)toast('导入失败：文件格式不正确');
     input.value='';
   };
   reader.readAsText(f);
+}
+/* ---------- GitHub 云同步（手机 ⇄ 电脑 数据中转） ---------- */
+const GH_FILE='worthit-data.json';
+const GH_CFG_KEY='worthit-gh';
+function ghConfig(){try{const c=JSON.parse(localStorage.getItem(GH_CFG_KEY)||'null');if(c&&c.owner&&c.repo&&c.token)return c;}catch(e){}return null;}
+function ghSaveConfig(owner,repo,token){const cfg={owner:owner.trim(),repo:repo.trim(),token:token.trim(),autoPull:false,syncedAt:null};try{localStorage.setItem(GH_CFG_KEY,JSON.stringify(cfg));}catch(e){}return cfg;}
+function ghUpdateConfig(patch){const c=ghConfig()||{};Object.assign(c,patch);try{localStorage.setItem(GH_CFG_KEY,JSON.stringify(c));}catch(e){}}
+function b64enc(s){return btoa(unescape(encodeURIComponent(s)));}
+function b64dec(s){return decodeURIComponent(escape(atob(s)));}
+function ghUrl(cfg){return 'https://api.github.com/repos/'+encodeURIComponent(cfg.owner)+'/'+encodeURIComponent(cfg.repo)+'/contents/'+GH_FILE;}
+function ghHeaders(cfg){return {'Authorization':'token '+cfg.token,'Accept':'application/vnd.github+json'};}
+function ghGetFile(cfg){
+  return fetch(ghUrl(cfg),{headers:ghHeaders(cfg)}).then(function(r){
+    if(r.status===404)return null;
+    if(!r.ok)return r.json().then(function(j){throw new Error(j.message||('HTTP '+r.status));});
+    return r.json();
+  });
+}
+function ghPutFile(cfg,content,sha){
+  return fetch(ghUrl(cfg),{method:'PUT',headers:ghHeaders(cfg),body:JSON.stringify({message:'WorthIt 云同步',content:b64enc(content),sha:sha||undefined})}).then(function(r){
+    if(!r.ok)return r.json().then(function(j){throw new Error(j.message||('HTTP '+r.status));});
+    return r.json();
+  });
+}
+function ghSave(){
+  const owner=val('gh-owner'),repo=val('gh-repo'),token=val('gh-token');
+  if(!owner||!repo||!token){toast('请填写 GitHub 用户名、仓库名和 Token');return;}
+  ghSaveConfig(owner,repo,token);
+  toast('已保存 GitHub 同步配置');renderData();
+}
+function pullFromGithub(){
+  const cfg=ghConfig();if(!cfg){toast('请先保存 GitHub 同步配置');return;}
+  ghGetFile(cfg).then(function(meta){
+    if(!meta){toast('云端还没有数据文件，请先在本机推送一次');return;}
+    let d;try{d=JSON.parse(b64dec(meta.content));}catch(err){toast('云端数据解析失败');return;}
+    const n0=STATE.items.length;
+    if(n0&&!confirm('从云端拉取将覆盖本机当前 '+n0+' 件物品，确定吗？'))return;
+    const ok=applyImportedData(d,function(okImg,n){
+      ghUpdateConfig({syncedAt:Date.now()});
+      toast('已从云端拉取 '+n+' 件物品'+(okImg?'（含图片）':''));renderData();
+    });
+    if(!ok)toast('云端数据格式不正确');
+  }).catch(function(e){toast('拉取失败：'+(e.message||e));});
+}
+function pushToGithub(){
+  const cfg=ghConfig();if(!cfg){toast('请先保存 GitHub 同步配置');return;}
+  if(!confirm('将本机 '+STATE.items.length+' 件物品推送到 GitHub 仓库，覆盖云端数据，确定吗？'))return;
+  ghGetFile(cfg).then(function(meta){
+    const sha=meta?meta.sha:null;
+    return buildExportPayload().then(function(payload){return ghPutFile(cfg,JSON.stringify(payload,null,2),sha);});
+  }).then(function(){
+    ghUpdateConfig({syncedAt:Date.now()});
+    toast('已推送到 GitHub，其他设备拉取即可同步');renderData();
+  }).catch(function(e){toast('推送失败：'+(e.message||e));});
+}
+function maybeAutoPull(){
+  const c=ghConfig();if(!c||!c.autoPull)return;
+  ghGetFile(c).then(function(meta){
+    if(!meta)return;
+    let d;try{d=JSON.parse(b64dec(meta.content));}catch(err){return;}
+    if(!d.items||!d.items.length)return;
+    const same=d.items.length===STATE.items.length&&d.items.every((x,i)=>x.id===STATE.items[i].id&&x.name===STATE.items[i].name&&x.purchasePrice===STATE.items[i].purchasePrice);
+    if(same)return;
+    const ok=applyImportedData(d,function(okImg,n){toast('已自动从云端同步 '+n+' 件物品');route();});
+    if(!ok)toast('自动同步失败：云端数据格式不正确');
+  }).catch(function(){});
 }
 window.addEventListener('resize',function(){Object.keys(STATE.charts).forEach(k=>STATE.charts[k]&&STATE.charts[k].resize());});
 
